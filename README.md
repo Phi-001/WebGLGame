@@ -1,3 +1,2 @@
-#WebGLGame
-
+# WebGLGame
 Game made with WebGL.
