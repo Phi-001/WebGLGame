@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <style>
+        * {
+            overflow: hidden;
+        }
         canvas {
             position: absolute;
             top: -1px;
@@ -19,9 +22,9 @@
 <body>
     <canvas id="gl"></canvas>
 </body>
-<script id="mainvs" src="Shaders/mainvs.glsl"></script>
-<script id="mainfs" src="Shaders/mainvs.glsl"></script>
-<script src="JS/webgl-helper.js"></script>
 <script src="JS/data.js"></script>
+<script src="JS/webgl-helper.js"></script>
+<script src="JS/webgl.js"></script>
+<script src="JS/matrix.js"></script>
 <script src="JS/main.js"></script>
 </html>
