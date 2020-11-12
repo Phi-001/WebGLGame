@@ -25,35 +25,14 @@ gl.frontFace(gl.CW);
 
 clear(gl);
 
-const fov = 100 * Math.PI / 180;
+const fov = 70 * Math.PI / 180;
 const aspect = canvas.clientWidth / canvas.clientHeight;
 const zNear = 0.1;
-const zFar= 100.0;
+const zFar= 10000.0;
 
-const ang = Math.tan(fov / 2 * Math.PI / 180);
-const projectionMatrix = [
-    0.5 / ang, 0,                  0,                                    0,
-    0,         0.5 * aspect / ang, 0,                                    0, 
-    0,         0,                  -(zFar + zNear) / (zFar - zNear),    -1,
-    0,         0,                  (-2 * zFar * zNear) / (zFar - zNear), 0,
-];
-
-const mainvs = `
-attribute vec4 aVertexPosition;
-
-uniform mat4 uModelViewMatrix;
-uniform mat4 uProjectionMatrix;
-
-void main() {
-    gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-}
-`;
-
-const mainfs = `
-void main() {
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-}
-`;
+const ang = Math.tan(fov / 2);
+const projectionMatrix = mat4.create();
+mat4.perspective(projectionMatrix, fov, aspect, zNear, zFar);
 
 const programInfo = {
     vertexShader: mainvs,
@@ -62,7 +41,12 @@ const programInfo = {
     attributes: {
         aVertexPosition: {
             buffer: levels[0].vertices,
-            numComponents: 2,
+            numComponents: 3,
+            type: gl.FLOAT,
+        },
+        aVertexNormal: {
+            buffer: levels[0].normals,
+            numComponents: 3,
             type: gl.FLOAT,
         }
     },
@@ -73,8 +57,3 @@ const programInfo = {
 };
 
 initVAO(gl, exts, programInfo);
-
-window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-})

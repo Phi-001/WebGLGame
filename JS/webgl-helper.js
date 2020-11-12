@@ -247,7 +247,6 @@ function render(gl, exts, programInfo, attributes = null) {
     }
     gl.useProgram(programInfo.program);
     setUniforms(gl, programInfo);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.drawElements(gl.TRIANGLES, programInfo.indices.length, gl.UNSIGNED_SHORT, 0);
     exts.vao.bindVertexArrayOES(null);
 }
