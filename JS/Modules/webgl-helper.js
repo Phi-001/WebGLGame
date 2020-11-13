@@ -1,3 +1,5 @@
+let textureUnit = 0;
+
 function clear(gl) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clearDepth(1.0);
@@ -65,14 +67,14 @@ function initBuffers(gl, programInfo) {
 }
 
 function initVAO(gl, exts, programInfo) {
-    const vao = exts.vao.createVertexArrayOES();
-    exts.vao.bindVertexArrayOES(vao);
+    const vao = exts.vertex_array_object.createVertexArrayOES();
+    exts.vertex_array_object.bindVertexArrayOES(vao);
     initBuffers(gl, programInfo);
     programInfo.vao = vao;
-    exts.vao.bindVertexArrayOES(null);
+    exts.vertex_array_object.bindVertexArrayOES(null);
 }
 
-function getBindPointForSamplerType(type) {
+function getBindPointForSamplerType(gl, type) {
     if (type === gl.SAMPLER_2D) {
         return gl.TEXTURE_2D;        
     }
@@ -195,13 +197,13 @@ function getUniformSetter(gl, program, uniformInfo) {
             };
         }(getBindPointForSamplerType(type), textureUnit++);
     }
-};
+}
 
 function getUniformsSetters(gl, programInfo) {
     textureUnit = 0;
     const program = programInfo.program;
     const numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-    let uniformsSetter = [];
+    const uniformsSetter = [];
     for (let i = 0; i < numUniforms; i++) {
         const uniformInfo = gl.getActiveUniform(program, i);
         if (!uniformInfo) {
@@ -215,7 +217,7 @@ function getUniformsSetters(gl, programInfo) {
         uniformsSetter[name] = setter;
     }
     programInfo.uniformsSetter = uniformsSetter;
-};
+}
 
 function setUniforms(gl, programInfo) {
     if (!programInfo.uniformsSetter) {
@@ -223,18 +225,23 @@ function setUniforms(gl, programInfo) {
     }
     const uniformsSetter = programInfo.uniformsSetter;
     const uniforms = programInfo.uniforms;
-    for (var i in uniformsSetter) {
+    for (const i in uniformsSetter) {
         if (uniformsSetter.hasOwnProperty(i)) {
-            uniformsSetter[i](uniforms[i]);
+            const items = i.split(".");
+            let obj = uniforms;
+            for (let j = 0; j < items.length; j++) {
+                obj = obj[items[j]];
+            }
+            uniformsSetter[i](obj);
         }
     }
-};
+}
 
 function render(gl, exts, programInfo, attributes = null) {
-    exts.vao.bindVertexArrayOES(programInfo.vao);
+    exts.vertex_array_object.bindVertexArrayOES(programInfo.vao);
     if (attributes) {
         const program = programInfo.program;
-        for (var i in attributes) {
+        for (const i in attributes) {
             if (attributes.hasOwnProperty(i)) {
                 const buffer = gl.createBuffer();
                 const location = gl.getAttribLocation(program, name);
@@ -248,5 +255,7 @@ function render(gl, exts, programInfo, attributes = null) {
     gl.useProgram(programInfo.program);
     setUniforms(gl, programInfo);
     gl.drawElements(gl.TRIANGLES, programInfo.indices.length, gl.UNSIGNED_SHORT, 0);
-    exts.vao.bindVertexArrayOES(null);
+    exts.vertex_array_object.bindVertexArrayOES(null);
 }
+
+export { clear, initVAO, render };
