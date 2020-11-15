@@ -2,7 +2,7 @@ let textureUnit = 0;
 
 function clear(gl) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clearDepth(1.0);
+    gl.clearDepth(0.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 }
 
@@ -227,7 +227,7 @@ function setUniforms(gl, programInfo) {
     const uniforms = programInfo.uniforms;
     for (const i in uniformsSetter) {
         if (uniformsSetter.hasOwnProperty(i)) {
-            const items = i.split(".");
+            const items = i.split(/\.|\[|\]\./);
             let obj = uniforms;
             for (let j = 0; j < items.length; j++) {
                 obj = obj[items[j]];
@@ -254,6 +254,7 @@ function render(gl, exts, programInfo, attributes = null) {
     }
     gl.useProgram(programInfo.program);
     setUniforms(gl, programInfo);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.drawElements(gl.TRIANGLES, programInfo.indices.length, gl.UNSIGNED_SHORT, 0);
     exts.vertex_array_object.bindVertexArrayOES(null);
 }

@@ -7,6 +7,10 @@ const canvas = document.getElementById("gl");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+if (!window.WebGLRenderingContext) {
+    alert("WebGL not supported. Try https://get.webgl.org");
+}
+
 const glArgs = {
     preserveDrawingBuffer : true, 
     failIfMajorPerformanceCaveat : false
@@ -14,7 +18,7 @@ const glArgs = {
 const gl = canvas.getContext("webgl", glArgs) || canvas.getContext("experimental-webgl", glArgs);
 
 if (!gl) {
-    alert("WebGL not supported. Try https://get.webgl.org");
+    alert("There is problem with WebGL. Try https://get.webgl.org/troubleshooting/");
 }
 
 const availableExtensions = gl.getSupportedExtensions();
@@ -27,18 +31,17 @@ for (let i = 0; i < availableExtensions.length; i++) {
 }
 
 gl.enable(gl.DEPTH_TEST);
-gl.depthFunc(gl.LEQUAL);
+gl.depthFunc(gl.GREATER);
 gl.enable(gl.CULL_FACE);
 gl.cullFace(gl.FRONT);
 gl.frontFace(gl.CW);
-gl.enable(gl.DITHER);
 
 clear(gl);
 
 const fov = 70 * Math.PI / 180;
-const aspect = canvas.clientWidth / canvas.clientHeight;
-const zNear = 0.1;
-const zFar= 10000.0;
+let aspect = gl.canvas.width / gl.canvas.height;
+const zNear = 1e-4;
+const zFar= 1e4;
 
 const projectionMatrix = mat4.create();
 mat4.perspective(projectionMatrix, fov, aspect, zNear, zFar);
@@ -62,24 +65,24 @@ const programInfo = {
     uniforms: {
         uProjectionMatrix: projectionMatrix,
         uModelViewMatrix: null,
-        uLight: {
-            position: [0.0, 0.0, 0.0],
-            color: [1.0, 1.0, 1.0],
-            constant: 1.0,
-            linear: 0.7,
-            quadratic: 1.8,
-        },
+        uLights: levels[0].lights,
+        ambient: [0.1, 0.1, 0.1],
     },
 };
 
 initVAO(gl, exts, programInfo);
 
 const camera = {
-    position: [0, 0, 0],
+    position: [0, 0.7, 0],
     dir: [0, 0, 0],
     yaw: 180,
     pitch: 0,
     stepSize: 0.1,
+};
+
+const player = {
+    height: 0.7,
+    onGround: true,
 };
 
 function constrain(x, e1, e2) {
@@ -115,28 +118,91 @@ window.addEventListener("keyup", (e) => {
     keys[code] = false;
 });
 
+function collision(camera, level, dir) {
+    let x = camera.position[0] + dir[0] * camera.stepSize;
+    let y = camera.position[1] + dir[1] * camera.stepSize;
+    let z = camera.position[2] + dir[2] * camera.stepSize;
+    for (let i = 0; i < level.length; i += 12) {
+        const xmax = Math.max(level[i    ], level[i + 3], level[i + 6]),
+              ymax = Math.max(level[i + 1], level[i + 4], level[i + 7]),
+              zmax = Math.max(level[i + 2], level[i + 5], level[i + 8]),
+              xmin = Math.min(level[i    ], level[i + 3], level[i + 6]),
+              ymin = Math.min(level[i + 1], level[i + 4], level[i + 7]),
+              zmin = Math.min(level[i + 2], level[i + 5], level[i + 8]);
+        if (level[i] === level[i + 3] && level[i + 3] === level[i + 6] && y < ymax && y > ymin && z > -zmax && z < -zmin) {
+            const py = level[i + 4] - level[i + 1],
+                  qy = level[i + 7] - level[i + 1],
+                  pz = level[i + 5] - level[i + 2],
+                  qz = level[i + 8] - level[i + 2],
+                  sign = py * qz - pz * qy;
+            if (sign < 0) {
+                x = Math.max(x, level[i] + 0.1);
+            } else {
+                x = Math.min(x, level[i] - 0.1);
+            }
+        } else if (level[i + 1] === level[i + 4] && level[i + 4] === level[i + 7] && x < xmax && x > xmin && z > -zmax && z < -zmin) {
+            const px = level[i + 3] - level[i],
+                  qx = level[i + 6] - level[i],
+                  pz = level[i + 5] - level[i + 2],
+                  qz = level[i + 8] - level[i + 2],
+                  sign = pz * qx - px * qz;
+            if (sign < 0) {
+                y = Math.max(y, level[i + 1] + 0.1);
+            } else {
+                y = Math.min(y, level[i + 1] - 0.1 - player.height);
+            }
+        } else if (level[i + 2] === level[i + 5] && level[i + 5] === level[i + 8] && x < xmax && x > xmin && y < ymax && y > ymin) {
+            const py = level[i + 3] - level[i],
+                  qy = level[i + 6] - level[i],
+                  pz = level[i + 4] - level[i + 1],
+                  qz = level[i + 7] - level[i + 1],
+                  sign = py * qz - pz * qy;
+            if (sign < 0) {
+                z = Math.min(z, -level[i + 2] - 0.1);
+            } else {
+                z = Math.max(z, -level[i + 2] + 0.1);
+            }
+        }
+    }
+    return [x, y, z];
+}
+
 function draw() {
     if (keys["KeyW"]) {
-        camera.position[0] -= camera.dir[0] * camera.stepSize;
-        camera.position[2] += camera.dir[2] * camera.stepSize;
+        const newPos = collision(camera, levels[0].vertices, [-camera.dir[0], 0, camera.dir[2]]);
+        camera.position[0] = newPos[0];
+        camera.position[2] = newPos[2];
     }
     if (keys["KeyA"]) {
-        camera.position[0] += camera.dir[2] * camera.stepSize;
-        camera.position[2] += camera.dir[0] * camera.stepSize;
+        const newPos = collision(camera, levels[0].vertices, [camera.dir[2], 0, camera.dir[0]]);
+        camera.position[0] = newPos[0];
+        camera.position[2] = newPos[2];
     }
     if (keys["KeyS"]) {
-        camera.position[0] += camera.dir[0] * camera.stepSize;
-        camera.position[2] -= camera.dir[2] * camera.stepSize;
+        const newPos = collision(camera, levels[0].vertices, [camera.dir[0], 0, -camera.dir[2]]);
+        camera.position[0] = newPos[0];
+        camera.position[2] = newPos[2];
     }
     if (keys["KeyD"]) {
-        camera.position[0] -= camera.dir[2] * camera.stepSize;
-        camera.position[2] -= camera.dir[0] * camera.stepSize;
+        const newPos = collision(camera, levels[0].vertices, [-camera.dir[2], 0, -camera.dir[0]]);
+        camera.position[0] = newPos[0];
+        camera.position[2] = newPos[2];
     }
-    if (keys["Space"]) {
-        camera.position[1] -= camera.stepSize;
+    if (keys["Space"] && player.onGround) {
+        const newPos = collision(camera, levels[0].vertices, [0, -5, 0]);
+        camera.position[1] = newPos[1];
+        player.onGround = false;
     }
     if (keys["ShiftLeft"]) { 
-        camera.position[1] += camera.stepSize;
+        const newPos = collision(camera, levels[0].vertices, [0, 1, 0]);
+        camera.position[1] = newPos[1];
+    }
+
+    const gravity = collision(camera, levels[0].vertices, [0, 0.2, 0]);
+    if (camera.position[1] === gravity[1]) {
+        player.onGround = true;
+    } else {
+        camera.position[1] = gravity[1];
     }
 
     clear(gl);
@@ -154,3 +220,10 @@ function draw() {
 }
 
 requestAnimationFrame(draw);
+
+window.onresize = () => {
+    gl.canvas.width = window.innerWidth;
+    gl.canvas.height = window.innerHeight;
+    mat4.changePerspective(programInfo.uniforms.uProjectionMatrix, programInfo.uniforms.uProjectionMatrix, aspect, gl.canvas.width / gl.canvas.height);
+    aspect = gl.canvas.width / gl.canvas.height;
+};

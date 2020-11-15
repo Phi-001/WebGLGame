@@ -250,7 +250,31 @@ class mat4 {
         out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
       
         return out;
-      }
+    }
+    static changePerspective(out, a, aspect, newAspect) {
+        if (out === a) {
+            out[0] = a[0] * aspect / newAspect;
+        } else {
+            out[0] = a[0] * aspect / newAspect;
+            out[1] = a[1];
+            out[2] = a[2];
+            out[3] = a[3];
+            out[4] = a[4];
+            out[5] = a[5];
+            out[6] = a[6];
+            out[7] = a[7];
+            out[8] = a[8];
+            out[9] = a[9];
+            out[10] = a[10];
+            out[11] = a[11];
+            out[12] = a[12];
+            out[13] = a[13];
+            out[14] = a[14];
+            out[15] = a[15];
+        }
+
+        return out;
+    }
 }
 
 export { mat4 };
