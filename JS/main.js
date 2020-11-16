@@ -76,7 +76,7 @@ const camera = {
     position: [0, 0.7, 0],
     dir: [0, 0, 0],
     yaw: 180,
-    pitch: 0,
+    pitch: 0.01,
     stepSize: 0.1,
 };
 
@@ -122,19 +122,23 @@ function atLeastTwo(a, b, c) {
     return a ? (b || c) : (b && c);
 }
 
-function collision(camera, level, dir) {
+function collision(position, level, dir, stepSize) {
     const normals = level.normals;
     const vertices = level.vertices;
-    const vx = dir[0] * camera.stepSize;
-    const vy = dir[1] * camera.stepSize;
-    const vz = dir[2] * camera.stepSize;
-    const x = camera.position[0];
-    const y = camera.position[1];
-    const z = camera.position[2];
+    const vx = dir[0] * stepSize;
+    const vy = dir[1] * stepSize;
+    const vz = dir[2] * stepSize;
+    const x = position[0];
+    const y = position[1];
+    const z = position[2];
+    let x2 = x + vx;
+    let y2 = y + vy;
+    let z2 = z + vz;
+    // ray and face
     for (let i = 0; i < vertices.length; i += 12) {
         const normalx = normals[i];
         const normaly = normals[i + 1];
-        const normalz = normals[i + 2];
+        const normalz = -normals[i + 2];
         const d = -(vertices[i] * normalx + vertices[i + 1] * normaly - vertices[i + 2] * normalz);
         const t = -(normalx * x + normaly * y + normalz * z + d - 0.1) / (normalx * vx + normaly * vy + normalz * vz);
         if (t < 0 || t >= 1 || !t) {
@@ -150,52 +154,64 @@ function collision(camera, level, dir) {
         const newy = y + t * vy + Number.EPSILON * normaly;
         const newz = z + t * vz + Number.EPSILON * normalz;
         if (atLeastTwo(newx <= xmax && newx >= xmin, newz >= -zmax && newz <= -zmin, newy <= ymax && newy >= ymin)) {
-            return [newx, newy, newz];
+            const slide = (x2 - newx) * normalx + (y2 - newy) * normaly + (z2 - newz) * normalz;
+            const slidex = x2 - slide * normalx;
+            const slidey = y2 - slide * normaly;
+            const slidez = z2 - slide * normalz;
+            const newPos =  collision([newx, newy, newz], level, [slidex - newx, slidey - newy, slidez - newz], 1);
+            x2 = newPos[0];
+            y2 = newPos[1];
+            z2 = newPos[2];
         }
     }
-    return [x + vx, y + vy, z + vz];
+
+    // ray and edge cylinder
+
+    // ray and cornor sphere
+
+    return [x2, y2, z2];
 }
 
 function draw() {
     if (keys["KeyW"]) {
-        const newPos = collision(camera, levels[0], [-camera.dir[0], 0, camera.dir[2]]);
+        const newPos = collision(camera.position, levels[0], [-camera.dir[0], 0, camera.dir[2]], camera.stepSize);
         camera.position[0] = newPos[0];
         camera.position[1] = newPos[1];
         camera.position[2] = newPos[2];
     }
     if (keys["KeyA"]) {
-        const newPos = collision(camera, levels[0], [camera.dir[2], 0, camera.dir[0]]);
+        const newPos = collision(camera.position, levels[0], [camera.dir[2], 0, camera.dir[0]], camera.stepSize);
         camera.position[0] = newPos[0];
         camera.position[1] = newPos[1];
         camera.position[2] = newPos[2];
     }
     if (keys["KeyS"]) {
-        const newPos = collision(camera, levels[0], [camera.dir[0], 0, -camera.dir[2]]);
+        const newPos = collision(camera.position, levels[0], [camera.dir[0], 0, -camera.dir[2]], camera.stepSize);
         camera.position[0] = newPos[0];
         camera.position[1] = newPos[1];
         camera.position[2] = newPos[2];
     }
     if (keys["KeyD"]) {
-        const newPos = collision(camera, levels[0], [-camera.dir[2], 0, -camera.dir[0]]);
+        const newPos = collision(camera.position, levels[0], [-camera.dir[2], 0, -camera.dir[0]], camera.stepSize);
         camera.position[0] = newPos[0];
         camera.position[1] = newPos[1];
         camera.position[2] = newPos[2];
     }
     if (keys["Space"] && player.onGround) {
-        const newPos = collision(camera, levels[0], [0, -5, 0]);
+        const newPos = collision(camera.position, levels[0], [0, -5, 0], camera.stepSize);
         camera.position[0] = newPos[0];
         camera.position[1] = newPos[1];
         camera.position[2] = newPos[2];
         player.onGround = false;
     }
     if (keys["ShiftLeft"]) { 
-        const newPos = collision(camera, levels[0], [0, 1, 0]);
+        const newPos = collision(camera.position, levels[0], [0, 1, 0], camera.stepSize);
         camera.position[0] = newPos[0];
         camera.position[1] = newPos[1];
         camera.position[2] = newPos[2];
     }
 
-    const gravity = collision(camera, levels[0], [0, 0.2, 0]);
+    const gravity = collision(camera.position, levels[0], [0, 0.2, 0], camera.stepSize);
     if (camera.position[1] === gravity[1]) {
         player.onGround = true;
     } else {
