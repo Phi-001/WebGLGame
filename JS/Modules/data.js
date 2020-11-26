@@ -2596,7 +2596,7 @@ const levels = [
                 direction: [0, -1, 0],
                 cutOff: Math.cos(1.4),
                 outerCutOff: Math.cos(1.5),
-                color: [1, 1, 1],
+                color: [0.75, 0.75, 0.75],
                 constant: 1,
                 linear: 0.7,
                 quadratic: 1.8,
@@ -2606,7 +2606,7 @@ const levels = [
                 direction: [0, -1, 0],
                 cutOff: Math.cos(1.4),
                 outerCutOff: Math.cos(1.5),
-                color: [1, 1, 1],
+                color: [0.75, 0.75, 0.75],
                 constant: 1,
                 linear: 0.7,
                 quadratic: 1.8,
@@ -2616,7 +2616,7 @@ const levels = [
                 direction: [0, -1, 0],
                 cutOff: Math.cos(1.4),
                 outerCutOff: Math.cos(1.5),
-                color: [1, 1, 1],
+                color: [1.1, 1.1, 1.1],
                 constant: 1,
                 linear: 0.7,
                 quadratic: 1.8,
@@ -2743,8 +2743,6 @@ const levels = [
                            -8.5,  5.8,  18.8,
                            -8.5,  3.8,  18.8],
                 normal: [0.0, 0.0, 1.0],
-                worldToLocal: [],
-                localToWorld: [],
             },
             {
                 position: [-5.0, -4.8, 18.8],
@@ -2754,8 +2752,6 @@ const levels = [
                            -4.0, -3.8,  18.8,
                            -4.0, -5.8,  18.8],
                 normal: [0.0, 0.0, 1.0],
-                worldToLocal: [],
-                localToWorld: [],
             }
         ],
     },
@@ -2770,10 +2766,5 @@ for (let i = 0; i < levels[0].vertices.length / 3; i += 4) {
     levels[0].indices.push(i    );
 }
 
-for (let i = 0; i < levels[0].portals.length; i++) {
-    const portal = levels[0].portals[i];
-    portal.worldToLocal = [];
-    portal.localToWorld = [];
-}
 
 export { levels };

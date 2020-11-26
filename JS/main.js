@@ -80,6 +80,8 @@ const camera = {
     yaw: 180,
     pitch: 0.01,
     stepSize: 0.1,
+    acceleration: [0.0, 0.0, 0.0],
+    velocity: [0.0, 0.0, 0.0],
 };
 
 const player = {
@@ -178,12 +180,23 @@ function atLeastTwo(a, b, c) {
     return a ? (b || c) : (b && c);
 }
 
-function collision(position, level, dir, stepSize, edges) {
+function normalize(v) {
+    const x = v[0];
+    const y = v[1];
+    const z = v[2];
+    const length = Math.sqrt(x * x + y * y + z * z);
+    v[0] /= length;
+    v[1] /= length;
+    v[2] /= length;
+    return v;
+}
+
+function collision(position, level, dir, edges) {
     const normals = level.normals;
     const vertices = level.vertices;
-    const vx = dir[0] * stepSize;
-    const vy = dir[1] * stepSize;
-    const vz = dir[2] * stepSize;
+    const vx = dir[0];
+    const vy = dir[1];
+    const vz = dir[2];
     const x = position[0];
     const y = position[1];
     const z = position[2];
@@ -256,6 +269,7 @@ function collision(position, level, dir, stepSize, edges) {
         const length = PminusEDotA / A2;
         const interSection2 = [vert1[0] + A[0] * length, vert1[1] + A[1] * length, vert1[2] + A[2] * length];
         const normal = [interSection[0] - interSection2[0], interSection[1] - interSection2[1], interSection[2] - interSection2[2]];
+        normalize(normal);
         interSection[0] += COLLISION_EPSILON * normal[0];
         interSection[1] += COLLISION_EPSILON * normal[1];
         interSection[2] += COLLISION_EPSILON * normal[2];
@@ -278,56 +292,95 @@ function collision(position, level, dir, stepSize, edges) {
     return [x2, y2, z2];
 }
 
+function collidePortal(position, dir, portal) {
+    const normal = portal.normal;
+    const vertices = portal.vertices;
+    const vx = dir[0];
+    const vy = dir[1];
+    const vz = dir[2];
+    const x = position[0];
+    const y = position[1];
+    const z = position[2];
+    const r = 0.1;
+    const normalx = normal[0];
+    const normaly = normal[1];
+    const normalz = normal[2];
+    const d = -(vertices[0] * normalx + vertices[1] * normaly + vertices[2] * normalz) - r;
+    const t = -(normalx * x + normaly * y + normalz * z + d) / (normalx * vx + normaly * vy + normalz * vz);
+    if (t < 0 || t >= 1 || !t) {
+        return false;
+    }
+    const xmax = Math.max(vertices[0], vertices[3], vertices[6]);
+    const ymax = Math.max(vertices[1], vertices[4], vertices[7]);
+    const zmax = Math.max(vertices[2], vertices[5], vertices[8]);
+    const xmin = Math.min(vertices[0], vertices[3], vertices[6]);
+    const ymin = Math.min(vertices[1], vertices[4], vertices[7]);
+    const zmin = Math.min(vertices[2], vertices[5], vertices[8]);
+    const newx = x + t * vx; 
+    const newy = y + t * vy;
+    const newz = z + t * vz;
+    if (atLeastTwo(newx <= xmax && newx >= xmin, newy <= ymax && newy >= ymin, newz <= zmax && newz >= zmin)) {
+        return true;
+    }
+    return false;
+}
+
 const edges = extractEdge(levels[0]);
 function draw() {
     if (keys["KeyW"]) {
-        const newPos = collision(camera.position, levels[0], [camera.dir[0], 0, camera.dir[2]], camera.stepSize, edges);
-        camera.position[0] = newPos[0];
-        camera.position[1] = newPos[1];
-        camera.position[2] = newPos[2];
+        camera.acceleration[0] += camera.dir[0];
+        camera.acceleration[1] += 0;
+        camera.acceleration[2] += camera.dir[2];
     }
     if (keys["KeyA"]) {
-        const newPos = collision(camera.position, levels[0], [camera.dir[2], 0, -camera.dir[0]], camera.stepSize, edges);
-        camera.position[0] = newPos[0];
-        camera.position[1] = newPos[1];
-        camera.position[2] = newPos[2];
+        camera.acceleration[0] += camera.dir[2];
+        camera.acceleration[1] += 0;
+        camera.acceleration[2] -= camera.dir[0];
     }
     if (keys["KeyS"]) {
-        const newPos = collision(camera.position, levels[0], [-camera.dir[0], 0, -camera.dir[2]], camera.stepSize, edges);
-        camera.position[0] = newPos[0];
-        camera.position[1] = newPos[1];
-        camera.position[2] = newPos[2];
+        camera.acceleration[0] -= camera.dir[0];
+        camera.acceleration[1] -= 0;
+        camera.acceleration[2] -= camera.dir[2];
     }
     if (keys["KeyD"]) {
-        const newPos = collision(camera.position, levels[0], [-camera.dir[2], 0, camera.dir[0]], camera.stepSize, edges);
-        camera.position[0] = newPos[0];
-        camera.position[1] = newPos[1];
-        camera.position[2] = newPos[2];
+        camera.acceleration[0] -= camera.dir[2];
+        camera.acceleration[1] += 0;
+        camera.acceleration[2] += camera.dir[0];
     }
-    if (keys["Space"]) {// && player.onGround) {
-        // const newPos = collision(camera.position, levels[0], [0, 5, 0], camera.stepSize, edges);
-        const newPos = collision(camera.position, levels[0], [0, 1, 0], camera.stepSize, edges);
-        camera.position[0] = newPos[0];
-        camera.position[1] = newPos[1];
-        camera.position[2] = newPos[2];
-        player.onGround = false;
-    }
-    if (keys["ShiftLeft"]) { 
-        const newPos = collision(camera.position, levels[0], [0, -1, 0], camera.stepSize, edges);
-        camera.position[0] = newPos[0];
-        camera.position[1] = newPos[1];
-        camera.position[2] = newPos[2];
+    if (keys["Space"]) {
+        camera.acceleration[0] += 0;
+        camera.acceleration[1] += 2.5;
+        camera.acceleration[2] += 0;
     }
 
-    // const gravity = collision(camera.position, levels[0], [0, 0.2, 0], camera.stepSize, edges);
-    // if (camera.position[1] === gravity[1]) {
-    //     player.onGround = true;
-    // } else {
-    //     player.onGround = false;
-    // }
-    // camera.position[0] = gravity[0];
-    // camera.position[1] = gravity[1];
-    // camera.position[2] = gravity[2];
+    const newPos = collision(camera.position, levels[0], [camera.velocity[0], camera.velocity[1] - 0.2, camera.velocity[2]], edges);
+    for (let i = 0; i < levels[0].portals.length; i++) {
+        const portal = levels[0].portals[i];
+        if(collidePortal(camera.position, camera.velocity, portal)) {
+            newPos[0] -= portal.position[0];
+            newPos[1] -= portal.position[1];
+            newPos[2] -= portal.position[2];
+            newPos[0] += portal.to[0];
+            newPos[1] += portal.to[1];
+            newPos[2] += portal.to[2];
+            break;
+        }
+    }
+    camera.position[0] = newPos[0];
+    camera.position[1] = newPos[1];
+    camera.position[2] = newPos[2];
+
+    camera.velocity[0] += camera.acceleration[0];
+    camera.velocity[1] += camera.acceleration[1];
+    camera.velocity[2] += camera.acceleration[2];
+
+    camera.acceleration[0] = 0;
+    camera.acceleration[1] = 0;
+    camera.acceleration[2] = 0;
+
+    camera.velocity[0] /= 10;
+    camera.velocity[1] /= 10;
+    camera.velocity[2] /= 10;
 
     clear(gl);
 
