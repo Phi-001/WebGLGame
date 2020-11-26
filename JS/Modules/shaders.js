@@ -44,7 +44,7 @@ struct spotLight {
     float quadratic;
 };
 
-uniform spotLight uLights[5];
+uniform spotLight uLights[25];
 uniform vec3 ambient;
 uniform int numLights;
 
@@ -54,7 +54,7 @@ varying vec3 vNormal;
 void main() {
     vec3 lighting = vec3(0.0);
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 25; i++) {
         if (all(equal(uLights[i].color, vec3(0.0)))) {
             break;
         }
