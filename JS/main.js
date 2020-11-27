@@ -158,8 +158,8 @@ canvas.addEventListener("click", () => {
 });
 
 canvas.addEventListener("mousemove", (e) => {
-    camera.yaw = (camera.yaw + e.movementX / canvas.clientWidth * 20) % 360;
-    camera.pitch = constrain(camera.pitch + e.movementY / canvas.clientHeight * 20, -90, 90);
+    camera.yaw = (camera.yaw + e.movementX / canvas.clientWidth * 40) % 360;
+    camera.pitch = constrain(camera.pitch + e.movementY / canvas.clientHeight * 40, -90, 90);
     camera.dir[0] = Math.sin(radians(camera.yaw));
     camera.dir[2] = -Math.cos(radians(camera.yaw));
 });
